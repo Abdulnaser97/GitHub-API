@@ -7,13 +7,14 @@ const expressSession = require("express-session");
 const crypto = require("crypto");
 const passport = require("passport");
 const GithubStrategy = require("passport-github").Strategy;
-const { stringify } = require("flatted");
-const _ = require("underscore");
 // import env variables
 require("dotenv").config();
 
-const { getWelcomeMessage, getPRFiles, getContent } = require("./Octokit");
-const { session } = require("passport");
+const {
+  repoContentController,
+  landingPageController,
+  pullRequestController,
+} = require("./Endpoints");
 
 const app = express();
 const port = process.env.PORT;
@@ -69,84 +70,15 @@ app.engine("handlebars", hbs.engine);
 app.set("views", __dirname + "/views");
 app.set("view engine", "handlebars");
 
-app.get("/", async (req, res) => {
-  let data = {
-    session: req.cookies[COOKIE] && JSON.parse(req.cookies[COOKIE]),
-  };
+/*************************************************************************************************/
+/******************************************** Endpoints ******************************************/
+/*************************************************************************************************/
 
-  let githubData;
-  // Check if session exists in browser
-  if (data.session && data.session.token) {
-    try {
-      // Call github API here
-      githubData = await getWelcomeMessage(data.session.token);
-    } catch (error) {
-      githubData = { error: error };
-    }
+app.get("/", landingPageController());
 
-    // Using the _ underscore library to create
-    // a shallow copy of the github api response
-    _.extend(data, githubData);
-  } else if (data.session) {
-    data.session.token = "mildly obfuscated.";
-  }
+app.get("/pr", pullRequestController());
 
-  let token = data.session ? data.session.token : "Signed out";
-  data.json = stringify(data, null, 2);
-
-  res.render("main", {
-    username: githubData,
-    token: token,
-  });
-});
-
-app.get("/pr", async (req, res) => {
-  let session = req.cookies[COOKIE] && JSON.parse(req.cookies[COOKIE]);
-
-  // Check if session exists in browser
-  if (session && session.token) {
-    try {
-      let resp;
-      // Call github API here
-      resp = await getPRFiles(session.token);
-      resp = await JSON.stringify(resp, undefined, 2);
-
-      res.render("main", {
-        pr: resp,
-        token: session.token,
-      });
-    } catch (error) {
-      res.render("main", {
-        error: error,
-        token: session.token,
-      });
-    }
-  }
-});
-
-app.get("/getcontent", async (req, res) => {
-  let session = req.cookies[COOKIE] && JSON.parse(req.cookies[COOKIE]);
-
-  // Check if session exists in browser
-  if (session && session.token) {
-    try {
-      let resp;
-      // Call github API here
-      resp = await getContent(session.token);
-      resp = await JSON.stringify(resp, undefined, 2);
-
-      res.render("main", {
-        content: resp,
-        token: session.token,
-      });
-    } catch (error) {
-      res.render("main", {
-        error: error,
-        token: session.token,
-      });
-    }
-  }
-});
+app.get("/getcontent", repoContentController());
 
 // /logoff clear the cookie from the browser session as well as redirect the user to the home or initial route
 app.get("/logoff", function (req, res) {

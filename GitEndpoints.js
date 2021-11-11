@@ -1,4 +1,4 @@
-const { Octokit, App } = require("octokit");
+const { Octokit } = require("octokit");
 
 // Fetch the data from the API and stores them in 'data' object
 async function getWelcomeMessage(token) {
